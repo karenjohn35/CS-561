@@ -1,0 +1,376 @@
+Name: Karen John 
+CWID: 20009222
+
+
+Query 1: This query is split into 5 different parts. Q1 computes the average quantities of each customer,product,  and month combination. Q2 creates a table in which the previous month’s avg quantities are displayed in relation to the current month, customer,product combo using a left outer join between Q1 and sales. A left outer join is used so that null values would display for January.  Q3 creates a table in which the next month’s avg quantities are also displayed in relation to the current month, customer,product combo  using a left outer join between q2 and q1. A left outer join is used so that null values would display for December. Q4 counts the number of sales quantities between the previous month and next month avg quantities from Q3 . Finally Q5 displays the number of sales transactions that were between the previous month’s avg quantities and next month’s quantities for each customer,prod, and month using a left outer join between q4 and sales. 
+
+
+with q1 as
+( 
+        select cust, prod, month, avg(quant)avg_quant
+        from sales
+        group by cust, prod, month
+),
+
+
+q2 as 
+(
+
+	select s.cust, s.prod, s.month, s.quant, q1.avg_quant prev_quant
+	from sales s
+	left outer join q1 on s.cust=q1.cust 
+	and s.prod=q1.prod 
+	and s.month= q1.month+1 
+	         
+),
+
+
+q3 as 
+(
+	select q2.cust, q2.prod, q2. month, q2.quant, q2.prev_quant, q1.avg_quant next_quant
+	 from q1
+ 	left outer join q2 on q2.cust=q1.cust 
+	and q2.prod=q1.prod 
+	and q2.month= q1.month-1 
+         
+),
+
+
+q4 as 
+(
+select cust, prod, month, count(quant) sales_quant_between_avgs
+        from q3
+        where quant between prev_quant and next_quant
+        or quant between next_quant and prev_quant
+        group by cust, prod, month
+),
+
+
+q5 as 
+(
+select distinct s.cust, s.prod, s.month, q4.sales_quant_between_avgs
+        from sales s
+        left outer join q4 on s.cust=q4.cust 
+	and s.prod=q4.prod 
+	and s.month= q4. month
+        order by s.cust, s.prod, s.month
+)
+
+
+
+
+select * from q5
+
+
+
+
+
+
+Query 2:  This query is split into 5 different parts. Q1 computes the average quantities of each customer,product,  and month combination. Q2 is generated as a reference table (copy of Q1). Q3 creates a table in which the previous month’s avg sales and current month’s sales are displayed in relation to the current month, customer,product combo using a left outer join between q2 and q1. Q4 creates a table in which the previous month’s avg sales and current month’s sales, and next month’s avg sales are displayed in relation to the current month, customer,product combo using a left outer join between q2 and q1. Lastly, in q5,  q3 and q4 are joined to produce a final table that displays the before_avg, during_avg, and after_avg for each month. Outer left joins are used in Q3 and Q4 to display  null values. 
+
+
+
+
+with q1 as
+( 
+        select cust, prod, month, avg(quant)avg_quant
+         from sales
+         group by cust, prod, month
+),
+
+
+q2 as 
+(select cust, prod, month, avg(quant)ref_avg_quant
+         from sales
+         group by cust, prod, month
+         
+
+
+),
+
+
+q3 as 
+(
+        select q1.cust, q1.prod, q1.month, q1.avg_quant during_avg, q2.ref_avg_quant before_avg
+        from q1
+        left outer join q2
+        on q1.cust= q2.cust and q1.prod=q2.prod and q1.month= q2.month+1
+),
+
+
+q4 as 
+(
+        select q1.cust, q1.prod, q1.month, q1.avg_quant during_avg, q2.ref_avg_quant after_avg
+        from q1
+        left outer join q2
+        on q1.cust= q2.cust and q1.prod=q2.prod and q1.month= q2.month-1
+),
+
+
+q5 as 
+(
+select q3.cust,q3.prod,q3.month, before_avg, q3.during_avg, after_avg
+        from q3, q4 
+        where q3.cust=q4.cust and q3.prod=q4.prod and q3.month= q4.month
+        order by q3.cust, q3.prod, q3.month
+
+
+)
+
+
+select * from q5
+
+
+
+
+
+
+
+
+
+
+    
+Query 3: This query is broken down into 5 parts.Q1 computes the average quantity for each customer, product, state combo. Q2 displays other customer averages for the same state and product combo. Q3 displays other product averages for the same state and customer combo. Lastly, Q4 displays other state averages for the same product and customer combo. 
+Q2, Q3, and Q4 achieve their tables using aggregator operators and != operators, in addition to joining the sales table and q1 tables. Q5 finally joins Q2, Q3, and Q4 to display the product’s average quantity, other customer avg, other prod avg, and other state avg for each customer, product, and state combo. 
+
+
+with q1 as
+( 
+        select cust, prod, state, avg(quant)avg_quant
+         from sales
+         group by cust, prod, state
+),
+
+
+q2 as 
+( select q1.cust, q1.prod, q1.state,  avg(s.quant)other_cust_avg
+ from q1, sales s
+ where q1.cust !=s.cust
+ and q1.prod= s.prod
+ and q1.state= s.state
+ group by q1.cust, q1.prod, q1.state
+
+
+),
+
+
+q3 as 
+( select q1.cust, q1.prod, q1.state,  avg(s.quant)other_prod_avg
+ from q1, sales s
+ where q1.cust =s.cust
+ and q1.prod!= s.prod
+ and q1.state= s.state
+ group by q1.cust, q1.prod, q1.state
+
+
+),
+
+
+q4 as 
+( select q1.cust, q1.prod, q1.state,  avg(s.quant)other_state_avg
+ from q1, sales s
+ where q1.cust =s.cust
+ and q1.prod= s.prod
+ and q1.state!= s.state
+ group by q1.cust, q1.prod, q1.state
+
+
+),
+
+
+q5 as 
+( 
+        select q1.cust, q1.prod, q1.state, q1.avg_quant, q2.other_cust_avg, q3.other_prod_avg, q4.other_state_avg
+        from q1,q2,q3, q4
+        where q1.cust =q2.cust and q1.cust=q3.cust and q1.cust=q4.cust
+        and q1.prod =q2.prod and q1.prod=q3.prod and q1.prod=q4.prod
+        and q1.state =q2.state and q1.state=q3.state and q1.state=q4.state
+        order by q1.cust, q1.prod, q1.state
+
+
+
+
+)
+
+
+select * from q5
+
+
+Query 4: This query is brown down into 6 parts. Q1 computes the max quantity that a customer purchased in NJ. Q2 computes the second max quantity that a customer purchased in NJ through a join between sales and q1. Q3 computes the third max quantity that a customer purchased in NJ through a join between sales, q1, and q2 . Q4 selects the product associated with the first max quantity  for each customer. Q5 selects the product associated with the second max quantity for each customer. Q6 selects the product associated with the third max quantity for each customer. Q4, Q5, Q6 are brought together through a union to display the top 3 max quantities for each customer in the state of NJ.
+
+
+with q1 as
+( 
+        select cust, max(quant)max_quant
+         from sales
+        where state= 'NJ'
+         group by cust
+        order by cust
+),
+
+
+q2 as 
+(
+        select s.cust, max(quant)max_quant2
+        from sales s,  q1 
+        where q1.cust=s.cust
+        and state= 'NJ'
+        and quant != max_quant
+        group by s.cust
+        order by s.cust
+
+
+
+
+),
+
+
+q3 as 
+(
+        select s.cust, max(quant)max_quant3
+        from sales s, q1,q2
+        where q1.cust=s.cust
+        and q2.cust=s.cust
+        and state= 'NJ'
+        and quant != max_quant
+        and quant != max_quant2
+        group by s.cust
+        order by s.cust
+
+
+
+
+),
+
+
+q4 as
+(
+select s.cust, s.quant, s.prod, s.date
+from sales s, q1
+where s.cust=q1.cust
+        and s.quant=q1.max_quant
+        and state= 'NJ'
+        
+),
+
+
+q5 as 
+(
+select s.cust, s.quant, s.prod, s.date
+from sales s, q2
+where s.cust=q2.cust
+        and s.quant=q2.max_quant2
+        and state= 'NJ'
+        
+),
+
+
+q6 as
+(
+select s.cust, s.quant, s.prod, s.date
+from sales s, q3
+where s.cust=q3.cust
+        and s.quant=q3.max_quant3
+        and state= 'NJ'
+        
+)
+
+
+
+
+select * from q4 
+union
+select * from q5 
+union
+select * from q6
+order by cust, quant, prod, date
+
+
+Query 5: This query is split into 6 different parts. Q1 selects the products and quantities from the sales table. Q2 computes the position of each quantity for each product using a join between Q1 and sales.  Q3 computes part of the equation to find the median pos, temporarily labeled as num. Q4 utilizes num to find the median pos for each prod using a join between Q2 and Q3. Q5 utilizes the median_pos to find the median quantity for each product using a join between q2 and q3. Last, Q6 uses an aggregate function min() to remove any duplicates from Q5 that have the same median position.
+
+
+with q1 as
+(
+select prod, quant
+from sales s
+order by prod, quant
+
+
+),
+
+
+
+
+
+
+q2 as
+(
+select q1.prod, q1.quant, count(q1.quant) pos 
+from q1,sales s
+where s.prod=q1.prod
+and s.quant <=q1.quant
+group by q1.prod, q1.quant
+order by q1.prod, q1.quant
+
+
+
+
+
+
+
+
+
+
+),
+
+
+q3 as
+( select q2.prod, count (q2.quant/2) num
+ from q2
+ group by q2.prod
+
+
+),
+
+
+
+
+q4 as
+(
+select q2.prod, q3.num, min(q2.pos) median_pos
+from q2,q3
+where q2.prod= q3.prod
+and q2.pos >= ceiling(q3.num)
+group by q2.prod, q3.num
+
+
+
+
+),
+
+
+q5 as
+( select q2.prod, q2.quant, q4.median_pos
+from q2, q4
+where q2.prod= q4.prod
+and q2.pos= q4.median_pos
+group by q2.prod, q2.quant, q4.median_pos
+order by q2.prod
+
+
+), 
+
+
+q6 as 
+(
+        select  q5.prod, min(q5.quant) median_quant
+        from q5
+        group by q5.prod
+
+
+
+
+)
+
+
+select * from q6

@@ -1,0 +1,289 @@
+﻿Name: Karen John 
+CWID: 20009222
+Query #1: This query is split into three different parts:q1, q2, q3.  Q1 computes the min, max, and average quantities of each customer. Q2 creates a table for each customer  in which minimum sales quantities, their corresponding products, dates, and states in which the transaction took place is displayed.  Q2 also includes maximum sales quantity and average quantity. The details of  the minimum purchase for each customer is selected in Q3 in addition to the maximum and average details. Implicitly, we are doing a natural join between all three parts without directly calling the keyword. 
+with q1 as
+( 
+        select cust, min(quant) min_q, max(quant) max_q, avg(quant) avg_q
+         from sales
+         group by cust
+),
+ 
+q2 as 
+(
+        select q1.cust, q1.min_q, s.prod min_prod, s.date min_dt, s.state min_st, q1.max_q, q1.avg_q 
+         from q1, sales s
+        where  q1.cust= s.cust 
+        and q1.min_q =s.quant
+),
+ 
+q3 as 
+(
+         select q2.cust, q2.min_q, q2.min_prod, q2.min_dt, q2.min_st, q2.max_q, s.prod max_prod, s.date max_dt, s.state max_state, q2.avg_q
+        from  q2, sales s
+        where  q2.cust= s.cust
+        and q2.max_q= s.quant
+ )
+ 
+ select * from q3
+        
+Query #2: This query is split into five different parts: q1, q2, q3,q4, q5. Q1 computes the sum (quantity) of products by year, month, and day. Q2 computes the maximum quantity by year and month, while Q3 compute the maximum day. Q4 computes the minimum quantity by year and month, while Q3 compute the minimum day. A natural join occurs between q3 and q5 to produce the final table.
+with q1 as 
+( 
+        select year, month, day, sum(quant) total
+         from sales
+         group by year, month, day
+),
+q2 as 
+( 
+        select year, month, max(total) busiest_q
+        from q1
+        group by year, month
+),
+q3 as 
+(
+        select q1.year, q1.month, q1.day busiest_day, q2.busiest_q 
+        from q1,q2
+        where q2.busiest_q= q1.total
+        and q1.year= q2.year
+        and q1.month= q2.month
+        order by q1.year, q1.month
+    
+),
+q4 as
+(
+        select year, month, min(total) slowest_q
+        from q1
+        group by year, month
+),
+q5 as 
+(
+        select q1.year, q1.month, q1.day slowest_day, q4.slowest_q
+        from q1,q4
+        where q4.slowest_q= q1.total
+        and q1.year= q4.year
+        and q1.month= q4.month
+        order by q1.year, q1.month
+)
+select * from (q3 natural join q5)
+Query #3:  This query is split into five different parts: q1, q2, q3,q4, q5. Q1 computes the (sum) quantity of products by customer and product. Q2 computes the maximum quantity of each customer, while Q3 computes the most favorite product (which matches the max quantity of the customer). Q4 computes the minimum quantity of each customer , while Q5 computes the least favorite product. A natural join occurs between q3 and q5 to produce the final table.
+with q1 as
+(
+        select cust, prod, sum(quant) sum_quant
+            from sales s
+            group by cust, prod
+            order by cust
+    
+    
+),
+q2 as 
+( 
+        select cust, max(q1.sum_quant) most_q 
+            from q1
+            group by cust
+ 
+),
+q3 as 
+( 
+        select q2.cust, q1.prod fav_prod
+         from q1, q2
+         where q2.cust= q1.cust
+         and q1.sum_quant=q2.most_q 
+ 
+),
+q4 as 
+(
+        select cust, min(q1.sum_quant) min_q 
+            from q1
+            group by cust
+),
+q5 as 
+(
+        select q4.cust, q1.prod least_fav_prod
+            from q1,q4
+            where q4.cust= q1.cust
+            and q1.sum_quant=q4.min_q 
+)
+select * from (q3 natural join q5)
+Query #4:  This query is broken down into ten different parts. Q1 computes a necessary view of the sale table to includes only the attributes that we are interested in.  Q2, Q4, Q6,  Q8 select the relevant data for each season based on months. Q3,Q5,Q7, Q9 computes the averages for each customer/product combination in each season. Q10 computes the yearly average, sum, and counts of each product. A natural join is used to connect the data from Q3, Q5, Q7,Q9, and Q10 to produce the final table. 
+with q1 as 
+( 
+        select cust, month, prod, quant
+        from sales s
+        group by  cust, month, prod, quant
+),
+q2 as
+(
+        select cust, month, prod, quant
+        from q1
+        where month=12
+        or month=1
+        or month=2
+),
+q3 as 
+( 
+        select q2.cust, q2.prod, avg (q2.quant) winter_avg
+           from q1,q2
+         where q1.cust= q2.cust
+         and q1.prod=q2.prod
+         group by q2.cust,q2.prod
+),
+q4 as 
+(
+        select cust, month, prod, quant
+        from q1
+        where month=3
+        or month=4
+        or month=5
+),
+q5 as 
+( 
+        select q4.cust, q4.prod, avg (q4.quant) spring_avg
+           from q1,q4
+         where q1.cust= q4.cust
+         and q1.prod=q4.prod
+         group by q4.cust,q4.prod
+),
+q6 as 
+(
+        select cust, month, prod, quant
+        from q1
+        where month=6
+        or month=7
+        or month=8
+),
+q7 as 
+( 
+        select q6.cust, q6.prod, avg (q6.quant) summer_avg
+           from q1,q6
+         where q1.cust= q6.cust
+         and q1.prod=q6.prod
+         group by q6.cust,q6.prod
+),
+q8 as 
+(
+        select cust, month, prod, quant
+        from q1
+        where month=9
+        or month=10
+        or month=11
+),
+q9 as 
+( 
+        select q8.cust, q8.prod, avg (q8.quant) fall_avg
+           from q1,q8
+         where q1.cust= q8.cust
+         and q1.prod=q8.prod
+         group by q8.cust,q8.prod
+),
+q10 as 
+( 
+        select q1.cust, q1.prod, sum(q1.quant) total, avg(q1.quant) average, count(q1.prod) counts
+          from q1
+          group by q1.cust, q1.prod
+ 
+)
+select* from (q3 natural join q5 natural join q7 natural join q9 natural join q10)
+Query #5: This query is broken down into 12 different parts. Q1 computes a necessary view of the sale tables to include only the attributes that we are interested in.  Q2, Q5, Q8, Q11 select the relevant data for each quarter based on months. Q3, Q6,Q9,Q12 compute the maximum quantity of each product in each quarter.  Q4, Q7,Q10,Q13 compute the date in which the maximum quantity of each product was purchased in each quarter, in addition to selecting the max quant for each quarter. A natural join is used to connect data from Q4, Q7,Q10, and Q13  to produce the final table. 
+with q1 as 
+( 
+        select prod, month,quant, date
+        from sales s
+        group by prod, month,quant, date
+),
+q2 as
+(
+        select prod, month, quant
+        from q1
+        where month=12
+        or month=1
+        or month=2
+),
+q3 as 
+( 
+        select q2.prod prod, max (q2.quant) Q1_MAX
+           from q1,q2
+         where q1.prod=q2.prod
+         group by q2.prod
+),
+q4 as 
+(
+        select distinct q3.prod, q3.Q1_MAX, q1.date Q1_MAX_date
+        from q1,q2,q3
+        where q1.prod=q3.prod
+        and q1.quant=q3.Q1_MAX
+        and q1.month= q2.month
+        
+),
+q5 as 
+(
+        select prod,month, quant
+        from q1
+        where month=3
+        or month=4
+        or month=5
+),
+q6 as 
+( 
+        select q5.prod prod, max(q5.quant) Q2_MAX
+           from q1,q5
+         where q1.prod=q5.prod
+         group by q5.prod
+),
+q7 as 
+(
+        select distinct q6.prod, q6.Q2_MAX, q1.date Q2_MAX_date
+        from q1,q5,q6
+        where q1.prod=q6.prod
+        and q1.quant=q6.Q2_MAX
+        and q1.month=q5.month
+        
+),
+q8 as 
+(
+        select prod, month, quant
+        from q1
+        where month=6
+        or month=7
+        or month=8
+),
+q9 as 
+( 
+        select q8.prod prod, max (q8.quant) Q3_MAX
+           from q1,q8
+         where q1.prod=q8.prod
+         group by q8.prod
+),
+q10 as 
+(
+        select distinct q9.prod, q9.Q3_MAX, q1.date Q3_MAX_date
+        from q1,q8,q9
+        where q1.prod=q9.prod
+        and q1.quant=q9.Q3_MAX
+        and q1.month=q8.month
+        
+),
+q11 as 
+(
+        select prod, month, quant
+        from q1
+        where month=9
+        or month=10
+        or month=11
+),
+q12 as 
+(
+         select q11.prod prod, max (q11.quant) Q4_MAX
+           from q1,q11
+         where q1.prod=q11.prod
+         group by q11.prod
+),
+q13 as 
+(
+        select distinct q12.prod, q12.Q4_MAX, q1.date Q4_MAX_date
+        from q1,q11,q12
+        where q1.prod=q12.prod
+        and q1.quant=q12.Q4_MAX
+        and q1.month=q11.month
+        
+)
+select * from (q4 natural join q7 natural join q10 natural join q13)
