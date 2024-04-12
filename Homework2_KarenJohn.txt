@@ -1,5 +1,5 @@
 Name: Karen John 
-CWID: 20009222
+
 
 
 Query 1: This query is split into 5 different parts. Q1 computes the average quantities of each customer,product,  and month combination. Q2 creates a table in which the previous month’s avg quantities are displayed in relation to the current month, customer,product combo using a left outer join between Q1 and sales. A left outer join is used so that null values would display for January.  Q3 creates a table in which the next month’s avg quantities are also displayed in relation to the current month, customer,product combo  using a left outer join between q2 and q1. A left outer join is used so that null values would display for December. Q4 counts the number of sales quantities between the previous month and next month avg quantities from Q3 . Finally Q5 displays the number of sales transactions that were between the previous month’s avg quantities and next month’s quantities for each customer,prod, and month using a left outer join between q4 and sales. 
