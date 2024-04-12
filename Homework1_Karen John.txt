@@ -1,5 +1,5 @@
 ﻿Name: Karen John 
-CWID: 20009222
+
 Query #1: This query is split into three different parts:q1, q2, q3.  Q1 computes the min, max, and average quantities of each customer. Q2 creates a table for each customer  in which minimum sales quantities, their corresponding products, dates, and states in which the transaction took place is displayed.  Q2 also includes maximum sales quantity and average quantity. The details of  the minimum purchase for each customer is selected in Q3 in addition to the maximum and average details. Implicitly, we are doing a natural join between all three parts without directly calling the keyword. 
 with q1 as
 ( 
